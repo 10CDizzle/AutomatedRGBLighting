@@ -18,6 +18,17 @@ WebSocketsServer webSocket = WebSocketsServer(81);
 
 #define USE_SERIAL Serial1
 
+// setting PWM properties
+const int freq = 5000;
+const int resolution = 16;
+const int ledChannels[3] = {0,1,2};
+const int ledPins[3] = {18,19,21};
+
+char StrBuf[50];
+
+//storage variable for LED Values
+float LEDSet[3] = {0,0,0};
+
 
 //Handler for getting three-value commands from the client
 void ParseNums(float (& val)[3], String input)
@@ -31,15 +42,15 @@ void ParseNums(float (& val)[3], String input)
   val[0] = FirstNumber.toFloat();
   val[1] = SecondNumber.toFloat();
   val[2] = ThirdNumber.toFloat();
-  if (val[0] > 255 || val[0] < 0)
+  if (val[0] > 65536 || val[0] < 0)
   {
     val[0] = 0;
   }
-  else if (val[1] > 255 || val[1] < 0)
+  else if (val[1] > 65536 || val[1] < 0)
   {
     val[1] = 0;
   }
-  if (val[2] > 255 || val[2] < 0)
+  if (val[2] > 65536 || val[2] < 0)
   {
     val[2] = 0;
   }
@@ -77,6 +88,17 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
     case WStype_TEXT:
       USE_SERIAL.printf("[%u] get Text: %s\n", num, payload);
 
+      sprintf(StrBuf,"%s",payload);
+
+      //Parse Numbers here...
+      ParseNums(LEDSet,StrBuf);
+
+      //Set PWM values:
+      
+      ledcWrite(ledChannels[0], LEDSet[0]);
+      ledcWrite(ledChannels[1], LEDSet[1]);
+      ledcWrite(ledChannels[2], LEDSet[2]);
+      
       // send message to client
       // webSocket.sendTXT(num, "message here");
 
@@ -104,6 +126,15 @@ void setup() {
   // USE_SERIAL.begin(921600);
   USE_SERIAL.begin(115200);
 
+      // configure LED PWM functionalitites
+  for(int i = 0; i<=2; i++)
+  {
+  ledcSetup(ledChannels[i], freq, resolution);
+  
+  // attach the channel to the GPIO to be controlled
+  ledcAttachPin(ledPins[i], ledChannels[i]); 
+  }
+
   //Serial.setDebugOutput(true);
   USE_SERIAL.setDebugOutput(true);
 
@@ -125,6 +156,8 @@ void setup() {
 
   webSocket.begin();
   webSocket.onEvent(webSocketEvent);
+
+  
 }
 
 void loop() {
