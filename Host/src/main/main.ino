@@ -16,29 +16,29 @@
 WiFiMulti WiFiMulti;
 WebSocketsServer webSocket = WebSocketsServer(81);
 
-#define USE_SERIAL Serial1
+#define USE_SERIAL Serial
 
 // setting PWM properties
 const int freq = 5000;
 const int resolution = 16;
-const int ledChannels[3] = {0,1,2};
-const int ledPins[3] = {18,19,21};
+const int ledChannels[3] = {0, 1, 2};
+const int ledPins[3] = {18, 19, 21};
 
 char StrBuf[50];
 
 //storage variable for LED Values
-float LEDSet[3] = {0,0,0};
+float LEDSet[3] = {0, 0, 0};
 
 
 //Handler for getting three-value commands from the client
 void ParseNums(float (& val)[3], String input)
 {
   int FirstSpace = input.indexOf(' ');
-  int SecondSpace = input.indexOf(' ', FirstSpace);
-  int ThirdSpace = input.indexOf(' ', SecondSpace);
-  String FirstNumber = input.substring(FirstSpace, SecondSpace);
-  String SecondNumber = input.substring(SecondSpace, ThirdSpace);
-  String ThirdNumber = input.substring(ThirdSpace, input.length());
+  int SecondSpace = input.indexOf(' ', FirstSpace+1);
+  int ThirdSpace = input.indexOf(' ', SecondSpace+1);
+  String FirstNumber = input.substring(0, FirstSpace);
+  String SecondNumber = input.substring(FirstSpace, SecondSpace);
+  String ThirdNumber = input.substring(SecondSpace, ThirdSpace);
   val[0] = FirstNumber.toFloat();
   val[1] = SecondNumber.toFloat();
   val[2] = ThirdNumber.toFloat();
@@ -88,17 +88,19 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
     case WStype_TEXT:
       USE_SERIAL.printf("[%u] get Text: %s\n", num, payload);
 
-      sprintf(StrBuf,"%s",payload);
+      sprintf(StrBuf, "%s", payload);
+      //USE_SERIAL.printf(StrBuf);
 
       //Parse Numbers here...
-      ParseNums(LEDSet,StrBuf);
+      ParseNums(LEDSet, StrBuf);
+      //USE_SERIAL.printf("%.2f %.2f %.2f",LEDSet[0],LEDSet[1],LEDSet[2]);
 
       //Set PWM values:
-      
+
       ledcWrite(ledChannels[0], LEDSet[0]);
       ledcWrite(ledChannels[1], LEDSet[1]);
       ledcWrite(ledChannels[2], LEDSet[2]);
-      
+
       // send message to client
       // webSocket.sendTXT(num, "message here");
 
@@ -126,13 +128,13 @@ void setup() {
   // USE_SERIAL.begin(921600);
   USE_SERIAL.begin(115200);
 
-      // configure LED PWM functionalitites
-  for(int i = 0; i<=2; i++)
+  // configure LED PWM functionalitites
+  for (int i = 0; i <= 2; i++)
   {
-  ledcSetup(ledChannels[i], freq, resolution);
-  
-  // attach the channel to the GPIO to be controlled
-  ledcAttachPin(ledPins[i], ledChannels[i]); 
+    ledcSetup(ledChannels[i], freq, resolution);
+
+    // attach the channel to the GPIO to be controlled
+    ledcAttachPin(ledPins[i], ledChannels[i]);
   }
 
   //Serial.setDebugOutput(true);
@@ -142,22 +144,27 @@ void setup() {
   USE_SERIAL.println();
   USE_SERIAL.println();
 
-  for (uint8_t t = 4; t > 0; t--) {
+  for (uint8_t t = 10; t > 0; t--) {
     USE_SERIAL.printf("[SETUP] BOOT WAIT %d...\n", t);
     USE_SERIAL.flush();
     delay(1000);
   }
 
-  WiFiMulti.addAP("SSID", "passpasspass");
+  WiFiMulti.addAP("SuperSecret", "EvenMoreSecret");
 
+  //If it can't connect, just reset the system
   while (WiFiMulti.run() != WL_CONNECTED) {
     delay(100);
+    USE_SERIAL.printf("Resetting...");
+    ESP.restart();
   }
+  USE_SERIAL.printf("Connected!");
+  USE_SERIAL.printf(WiFi.localIP().toString().c_str());
 
   webSocket.begin();
   webSocket.onEvent(webSocketEvent);
 
-  
+
 }
 
 void loop() {

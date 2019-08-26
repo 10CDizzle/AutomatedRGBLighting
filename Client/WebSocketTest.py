@@ -17,4 +17,4 @@ async def hello(uri):
 
 #Actually attempts the above function, at ws://192.168.0.101:8765
 asyncio.get_event_loop().run_until_complete(
-    hello('ws://192.168.0.101:8765'))
+    hello('ws://192.168.1.110:81'))
